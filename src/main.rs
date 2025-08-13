@@ -1,18 +1,55 @@
 use std::fs;
 
+use clap::{Parser, ValueEnum};
 use maze::maze::{generators::*, MazeSolver};
 use maze::consts::*;
-use maze::maze::solvers::{BreadthFirstSearch, DepthFirstSearch};
+use maze::maze::solvers::{AStarSolver, Algorithm, BFSSolver, DFSSolver};
 use maze::maze::{Maze, MazeGenerator};
 use sfml::{
     graphics::{Color, RenderTarget, RenderWindow},
     window::{Event, Style},
 };
 
-const DEBUG: bool = false;
-const DEBUG_STEPS_PER_SECOND: Option<u32> = None;
+const DEBUG_STEPS_PER_SECOND: u32 = 144 * 2;
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+enum AlgorithmArg {
+    /// Depth-First Search
+    DFS,
+    /// Breadth-First Search
+    BFS,
+    AStar,
+}
+
+impl ToString for AlgorithmArg {
+    fn to_string(&self) -> String {
+        match self {
+            AlgorithmArg::BFS => String::from("bfs"),
+            AlgorithmArg::DFS => String::from("dfs"),
+            AlgorithmArg::AStar => String::from("a-star"),
+        }
+    }
+}
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// Maze data path
+    #[arg(short, long)]
+    maze: Option<String>,
+
+    /// See generation live
+    #[arg(short, long)]
+    debug: bool,
+
+    /// Which algorithm to use
+    #[arg(long, default_value_t = AlgorithmArg::DFS)]
+    alg: AlgorithmArg,
+}
 
 fn main() {
+    let cli: Cli = Cli::parse();
+
     let mut window = RenderWindow::new(
         (
             (MAZE_WIDTH * CELL_SIZE) as u32,
@@ -24,22 +61,35 @@ fn main() {
     )
     .unwrap();
 
-    if DEBUG {
-        match DEBUG_STEPS_PER_SECOND {
-            Some(v) => window.set_framerate_limit(v),
-            None => window.set_vertical_sync_enabled(true),
-        }
+    if cli.debug {
+        window.set_framerate_limit(DEBUG_STEPS_PER_SECOND);
     } else {
         window.set_vertical_sync_enabled(true)
     }
-
-    let mut maze = Maze::new(MAZE_WIDTH, MAZE_HEIGHT);
-    let mut generator = Wilson::new(maze.get_bounds());
-    let mut solver = DepthFirstSearch::new(maze.get_bounds());
-
+    
     let mut generated = false;
+    let mut maze = match cli.maze {
+        None => {
+            Maze::new(MAZE_WIDTH, MAZE_HEIGHT)
+        },
+        Some(path) => {
+            let data = String::from_utf8(fs::read(path).unwrap()).unwrap();
+            
+            generated = true;
+            Maze::from_str(&data).unwrap()
+        }
+    };
+    let mut generator = Wilson::new(maze.get_bounds());
 
-    if !DEBUG {
+    let bounds = maze.get_bounds();
+
+    let mut solver: Algorithm = match cli.alg {
+        AlgorithmArg::BFS => Algorithm::BreadthFirstSearch(BFSSolver::new(bounds)),
+        AlgorithmArg::DFS => Algorithm::DepthFirstSearch(DFSSolver::new(bounds)),
+        AlgorithmArg::AStar => Algorithm::AStar(AStarSolver::new(bounds))
+    };
+
+    if !(generated || cli.debug) {
         maze.generate(&mut generator);
         generated = true
     }

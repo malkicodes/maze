@@ -12,9 +12,12 @@ pub struct RandomDFS {
 }
 
 impl RandomDFS {
-    pub fn new() -> Self {
+    pub fn new(bounds: (usize, usize)) -> Self {
         Self{
-            stack: vec![(0, 0)]
+            stack: vec![(
+                rng().random_range(0..bounds.0),
+                rng().random_range(0..bounds.1),
+            )]
         }
     }
 }
@@ -72,6 +75,8 @@ pub struct Wilson {
     walk: Vec<(usize, usize)>,
     first_walk_target: Option<(usize, usize)>,
     opposite_of_last_direction: Option<Direction>,
+
+    current_walk_steps: usize,
 }
 
 impl Wilson {
@@ -92,6 +97,7 @@ impl Wilson {
             walk: vec![start],
             first_walk_target: Some(end),
             opposite_of_last_direction: None,
+            current_walk_steps: 0,
         }
     }
 
@@ -218,8 +224,10 @@ impl MazeGenerator for Wilson {
 
         self.opposite_of_last_direction = Some(next.2.opposite());
         self.walk.push((next.0, next.1));
+        self.current_walk_steps += 1;
 
-        if maze.get(next.0, next.1) != 0 {
+        if  maze.get(next.0, next.1) != 0 {
+            self.first_walk_target = None;
             self.finish_walk(maze);
             return self.create_new_walk(maze);
         } else if let Some(target) = self.first_walk_target {

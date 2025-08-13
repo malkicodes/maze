@@ -3,9 +3,9 @@ pub mod maze;
 pub mod consts {
     use sfml::graphics::Color;
 
-    pub const MAZE_WIDTH: usize = 24;
-    pub const MAZE_HEIGHT: usize = 24;
-    pub const CELL_SIZE: usize = 24;
+    pub const MAZE_WIDTH: usize = 64;
+    pub const MAZE_HEIGHT: usize = 64;
+    pub const CELL_SIZE: usize = 8;
     pub const WALL_WIDTH: usize = 1;
 
     pub const WALL_COLOR: Color = Color::rgb(0, 0, 0);

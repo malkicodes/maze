@@ -5,15 +5,45 @@ use sfml::graphics::{Color, Drawable, PrimitiveType, RectangleShape, Shape, Tran
 use crate::maze::{Maze, MazeSolver};
 use crate::consts::*;
 
-pub struct DepthFirstSearch {
+pub enum Algorithm {
+    DepthFirstSearch(DFSSolver),
+    BreadthFirstSearch(BFSSolver),
+    AStar(AStarSolver),
+}
+
+impl Algorithm {
+    pub fn step(&mut self, maze: &Maze) {
+        match self {
+            Self::BreadthFirstSearch(v) => v.step(maze),
+            Self::DepthFirstSearch(v) => v.step(maze),
+            Self::AStar(v) => v.step(maze),
+        };
+    }
+}
+
+impl Drawable for Algorithm {
+    fn draw<'a: 'shader, 'texture, 'shader, 'shader_texture>(
+            &'a self,
+            target: &mut dyn sfml::graphics::RenderTarget,
+            rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
+        ) {
+        match self {
+            Self::BreadthFirstSearch(v) => v.draw(target, rs),
+            Self::DepthFirstSearch(v) => v.draw(target, rs),
+            Self::AStar(v) => v.draw(target, rs),
+        };
+    }
+}
+
+pub struct DFSSolver {
     visited: HashSet<(usize, usize)>,
     path: Vec<(usize, usize)>,
 
     end: (usize, usize),
 }
 
-impl DepthFirstSearch {
-    pub fn new(bounds: (usize, usize)) -> Self {
+impl MazeSolver for DFSSolver {
+    fn new(bounds: (usize, usize)) -> Self {
         return Self{
             visited: HashSet::new(),
             path: vec![(0, 0)],
@@ -21,27 +51,7 @@ impl DepthFirstSearch {
             end: (bounds.0 - 1, bounds.1 - 1)
         }
     }
-}
 
-impl Drawable for DepthFirstSearch {
-    fn draw<'a: 'shader, 'texture, 'shader, 'shader_texture>(
-        &'a self,
-        target: &mut dyn sfml::graphics::RenderTarget,
-        rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
-    ) {
-        let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.path.len(), VertexBufferUsage::DYNAMIC).unwrap();
-
-        let points: Vec<Vertex> = self.path.iter().map(
-            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * CELL_SIZE / 2) as f32, ((*y * 2 + 1) * CELL_SIZE / 2) as f32).into(), Color::RED)
-        ).collect();
-
-        polyline.update(&points, 0).unwrap();
-
-        target.draw_vertex_buffer(&polyline, rs);
-    }
-}
-
-impl MazeSolver for DepthFirstSearch {
     fn step(&mut self, maze: &Maze) -> Option<&Vec<(usize, usize)>> {
         let pos = *self.path.last().unwrap();
 
@@ -70,7 +80,7 @@ impl MazeSolver for DepthFirstSearch {
     }
 }
 
-pub struct BreadthFirstSearch {
+pub struct BFSSolver {
     queue: VecDeque<(usize, usize)>,
     visited: HashMap<(usize, usize), Option<(usize, usize)>>,
 
@@ -80,8 +90,8 @@ pub struct BreadthFirstSearch {
     end: (usize, usize)
 }
 
-impl BreadthFirstSearch {
-    pub fn new(bounds: (usize, usize)) -> Self {
+impl MazeSolver for BFSSolver {
+    fn new(bounds: (usize, usize)) -> Self {
         let mut queue = VecDeque::new();
         let mut visited: HashMap<(usize, usize), Option<(usize, usize)>> = HashMap::new();
 
@@ -98,42 +108,7 @@ impl BreadthFirstSearch {
             end: (bounds.0 - 1, bounds.1 - 1)
         }
     }
-}
 
-impl Drawable for BreadthFirstSearch {
-    fn draw<'a: 'shader, 'texture, 'shader, 'shader_texture>(
-        &'a self,
-        target: &mut dyn sfml::graphics::RenderTarget,
-        _: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
-    ) {
-        let mut rect = RectangleShape::with_size(
-            (CELL_SIZE as f32 / 2.,
-            CELL_SIZE as f32 / 2.).into()
-        );
-        rect.set_origin((CELL_SIZE as f32 / 4., CELL_SIZE as f32 / 4.));
-
-        for pos in self.visited.keys() {
-            rect.set_fill_color(Color::rgba(0, 255, 0, if self.finished {
-                if self.path.contains(pos) {
-                    255
-                } else {
-                    64
-                }
-            } else {
-                255
-            }));
-
-            rect.set_position((
-                ((pos.0 * 2 + 1) * CELL_SIZE / 2) as f32,
-                ((pos.1 * 2 + 1) * CELL_SIZE / 2) as f32,
-            ));
-    
-            target.draw(&rect);
-        }
-    }
-}
-
-impl MazeSolver for BreadthFirstSearch {
     fn step(&mut self, maze: &Maze) -> Option<&Vec<(usize, usize)>> {
         if self.finished {
             return Some(&self.path);
@@ -177,5 +152,232 @@ impl MazeSolver for BreadthFirstSearch {
         }
 
         None
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CellInformation {
+    f_cost: usize,
+    h_cost: usize,
+    from: Option<(usize, usize)>
+}
+
+pub struct AStarSolver {
+    open: HashMap<(usize, usize), CellInformation>,
+    closed: HashMap<(usize, usize), CellInformation>,
+
+    end: (usize, usize),
+
+    path: Vec<(usize, usize)>
+}
+
+impl MazeSolver for AStarSolver {
+    fn new(bounds: (usize, usize)) -> Self {
+        let mut open = HashMap::new();
+
+        open.insert((0, 0), CellInformation { h_cost: 0, f_cost: bounds.0 + bounds.1, from: None });
+
+        Self {
+            open,
+            closed: HashMap::new(),
+
+            end: (bounds.0 - 1, bounds.1 - 1),
+
+            path: Vec::new(),
+        }
+    }
+
+    fn step(&mut self, maze: &Maze) -> Option<&Vec<(usize, usize)>> {
+        if self.path.len() != 0 {
+            return Some(&self.path);
+        }
+
+        let mut min_f_cost = usize::MAX;
+        let mut min_f_cost_cells: Vec<(&(usize, usize), &CellInformation)> = vec![];
+
+        for (pos, info) in self.open.iter() {
+            if info.f_cost < min_f_cost {
+                min_f_cost_cells.clear();
+                min_f_cost_cells.push((pos, info));
+                min_f_cost = info.f_cost
+            } else if info.f_cost == min_f_cost {
+                min_f_cost_cells.push((pos, info));
+            }
+        }
+
+        let current_data = {
+            if min_f_cost_cells.len() == 1 {
+                min_f_cost_cells[0]
+            } else {
+                *min_f_cost_cells.iter().min_by_key(|(_, v)| v.h_cost).unwrap()
+            }
+        };
+
+        let current_pos= *current_data.0;
+        let current = *current_data.1;
+
+        self.closed.insert(current_pos, current);
+        self.open.remove(&current_pos);
+
+        if current_pos == self.end {
+            let mut pos = current_pos;
+
+            loop {
+                self.path.push(pos);
+
+                let prev = self.closed.get(&pos).unwrap();
+
+                match prev.from {
+                    None => break,
+                    Some(v) => pos = v,
+                }
+            }
+
+            self.path.reverse();
+
+            return Some(&self.path);
+        }
+
+        let neighbors = maze.get_travellable_neighbors(current_pos);
+
+        for neighbor in neighbors.iter().map(|v| (v.0, v.1)) {
+            if self.closed.contains_key(&neighbor) {
+                continue;
+            }
+
+            let g_cost = current.h_cost + 1;
+            let h_cost = current_pos.0.abs_diff(self.end.0) + current_pos.1.abs_diff(self.end.1);
+            let f_cost = g_cost + h_cost;
+
+            if {
+                if let Some(v) = self.closed.get(&neighbor) {
+                    h_cost < v.h_cost
+                } else {
+                    false
+                }
+            } {
+                self.closed.insert(
+                    neighbor, 
+                    CellInformation { f_cost, h_cost: h_cost, from: Some(current_pos) }
+                );
+                continue;
+            }
+
+            if !self.open.contains_key(&neighbor) {
+                self.open.insert(neighbor, CellInformation { f_cost, h_cost: h_cost, from: Some(current_pos) });
+            }
+        }
+
+        None
+    }
+}
+
+
+impl Drawable for DFSSolver {
+    fn draw<'a: 'shader, 'texture, 'shader, 'shader_texture>(
+        &'a self,
+        target: &mut dyn sfml::graphics::RenderTarget,
+        rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
+    ) {
+        let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.path.len(), VertexBufferUsage::DYNAMIC).unwrap();
+
+        let points: Vec<Vertex> = self.path.iter().map(
+            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * CELL_SIZE / 2) as f32, ((*y * 2 + 1) * CELL_SIZE / 2) as f32).into(), Color::RED)
+        ).collect();
+
+        polyline.update(&points, 0).unwrap();
+
+        target.draw_vertex_buffer(&polyline, rs);
+    }
+}
+
+impl Drawable for BFSSolver {
+    fn draw<'a: 'shader, 'texture, 'shader, 'shader_texture>(
+        &'a self,
+        target: &mut dyn sfml::graphics::RenderTarget,
+        _: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
+    ) {
+        let mut rect = RectangleShape::with_size(
+            (CELL_SIZE as f32 / 2.,
+            CELL_SIZE as f32 / 2.).into()
+        );
+        rect.set_origin((CELL_SIZE as f32 / 4., CELL_SIZE as f32 / 4.));
+
+        for pos in self.visited.keys() {
+            rect.set_fill_color(Color::rgba(0, 255, 0, if self.finished {
+                if self.path.contains(pos) {
+                    255
+                } else {
+                    64
+                }
+            } else {
+                255
+            }));
+
+            rect.set_position((
+                ((pos.0 * 2 + 1) * CELL_SIZE / 2) as f32,
+                ((pos.1 * 2 + 1) * CELL_SIZE / 2) as f32,
+            ));
+    
+            target.draw(&rect);
+        }
+    }
+}
+
+impl Drawable for AStarSolver {
+    fn draw<'a: 'shader, 'texture, 'shader, 'shader_texture>(
+        &'a self,
+        target: &mut dyn sfml::graphics::RenderTarget,
+        rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
+    ) {
+        let finished = self.path.len() != 0;
+
+        let mut rect = RectangleShape::with_size(
+            (CELL_SIZE as f32 / 2.,
+            CELL_SIZE as f32 / 2.).into()
+        );
+        rect.set_origin((CELL_SIZE as f32 / 4., CELL_SIZE as f32 / 4.));
+        
+        for pos in self.closed.keys() {
+            rect.set_fill_color(Color::rgba(255, 0, 0, if finished {
+                    if self.path.contains(pos) {
+                        255
+                    } else {
+                        64
+                    }
+                } else {
+                    255
+                })
+            );
+            rect.set_position((
+                ((pos.0 * 2 + 1) * CELL_SIZE / 2) as f32,
+                ((pos.1 * 2 + 1) * CELL_SIZE / 2) as f32,
+            ));
+
+            target.draw(&rect);
+        }
+
+        rect.set_fill_color(Color::rgba(0, 255, 0, if finished { 64 } else { 255 } ));
+        
+        for pos in self.open.keys() {
+            rect.set_position((
+                ((pos.0 * 2 + 1) * CELL_SIZE / 2) as f32,
+                ((pos.1 * 2 + 1) * CELL_SIZE / 2) as f32,
+            ));
+
+            target.draw(&rect);
+        }
+
+        if self.path.len() != 0 {
+            let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.path.len(), VertexBufferUsage::DYNAMIC).unwrap();
+    
+            let points: Vec<Vertex> = self.path.iter().map(
+                |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * CELL_SIZE / 2) as f32, ((*y * 2 + 1) * CELL_SIZE / 2) as f32).into(), Color::RED)
+            ).collect();
+    
+            polyline.update(&points, 0).unwrap();
+    
+            target.draw_vertex_buffer(&polyline, rs);
+        }
     }
 }

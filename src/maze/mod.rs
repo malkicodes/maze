@@ -300,5 +300,6 @@ pub trait MazeGenerator: Drawable {
 }
 
 pub trait MazeSolver: Drawable {
+    fn new(bounds: (usize, usize)) -> Self;
     fn step(&mut self, maze: &Maze) -> Option<&Vec<(usize, usize)>>;
 }
