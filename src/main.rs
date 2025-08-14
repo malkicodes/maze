@@ -5,6 +5,7 @@ use maze::maze::{generators::*, MazeSolver};
 use maze::consts::*;
 use maze::maze::solvers::{AStarSolver, Algorithm, BFSSolver, DFSSolver};
 use maze::maze::{Maze, MazeGenerator};
+use sfml::window::Key;
 use sfml::{
     graphics::{Color, RenderTarget, RenderWindow},
     window::{Event, Style},
@@ -98,6 +99,7 @@ fn main() {
         while let Some(ev) = window.poll_event() {
             match ev {
                 Event::Closed => break 'mainloop,
+                Event::KeyPressed { code: Key::Q, .. } => break 'mainloop,
                 _ => {}
             }
         }
