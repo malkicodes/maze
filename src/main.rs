@@ -53,8 +53,8 @@ fn main() {
 
     let mut window = RenderWindow::new(
         (
-            (MAZE_WIDTH * CELL_SIZE) as u32,
-            (MAZE_HEIGHT * CELL_SIZE) as u32,
+            (MAZE_WIDTH as usize * CELL_SIZE) as u32,
+            (MAZE_HEIGHT as usize * CELL_SIZE) as u32,
         ),
         "Maze",
         Style::CLOSE,
@@ -74,10 +74,16 @@ fn main() {
             Maze::new(MAZE_WIDTH, MAZE_HEIGHT)
         },
         Some(path) => {
-            let data = String::from_utf8(fs::read(path).unwrap()).unwrap();
+            let data = fs::read(path).unwrap();
             
             generated = true;
-            Maze::from_str(&data).unwrap()
+            let maze = Maze::from_data(&data).unwrap();
+
+            let (width, height) = maze.get_bounds();
+
+            window.set_size(((width * CELL_SIZE) as u32, (height * CELL_SIZE) as u32));
+
+            maze
         }
     };
     let mut generator = Wilson::new(maze.get_bounds());
@@ -123,7 +129,7 @@ fn main() {
         window.display();
     }
 
-    match fs::write("maze.dat", maze.as_str()) {
+    match fs::write("maze.dat", maze.as_str().unwrap()) {
         Ok(_) => println!("Wrote maze data to maze.dat"),
         Err(err) => println!("Could not write to file: {}", err)
     };

@@ -18,53 +18,18 @@ pub struct Maze {
 }
 
 impl Maze {
-    pub fn new(width: usize, height: usize) -> Self {
-        let cells = vec![0; width * height];
+    pub fn new(width: u16, height: u16) -> Self {
+        let cells = vec![0; width as usize * height as usize];
 
         Self{
-            width,
-            height,
+            width: width as usize,
+            height: height as usize,
             cells,
         }
     }
 
-    pub fn from_str(data: &str) -> Result<Self, String> {
-        let segments: Vec<&str> = data.split(';').collect();
-        
-        if segments.len() != 3 {
-            return Err(String::from("invalid segment count"));
-        }
-
-        let width = segments[0].parse::<usize>();
-        if let Err(e) = width {
-            return Err(format!("invalid width: {e}"));
-        }
-
-        let height = segments[1].parse::<usize>();
-        if let Err(e) = height {
-            return Err(format!("invalid height: {e}"));
-        }
-
-        let width = width.unwrap();
-        let height = height.unwrap();
-
-        let mut cells = vec![0; width * height];
-
-        let cell_data = segments[2];
-
-        if cell_data.len() != width * height {
-            return Err(String::from("invalid cell data length"));
-        }
-
-        for (i, data) in cell_data.chars().enumerate() {
-            cells[i] = data as u8 & 0b00001111;
-        }
-        
-        Ok(Self{
-            width,
-            height,
-            cells,
-        })
+    pub fn from_data(data: &Vec<u8>) -> Result<Self, String> {
+        decode_maze(data)
     }
 
     pub fn get(&self, x: usize, y: usize) -> u8 {
@@ -89,10 +54,8 @@ impl Maze {
         (self.width, self.height)
     }
 
-    pub fn as_str(&self) -> String {
-        let data = String::from_utf8(self.cells.iter().map(|a| 0b01000000 | a).collect()).unwrap();
-
-        format!("{};{};{}", self.width, self.height, data)
+    pub fn as_str(&self) -> Result<String, String> {
+        encode_maze(self)
     }
 
     pub fn i_to_xy(&self, i: usize) -> (usize, usize) {
@@ -263,6 +226,7 @@ impl Drawable for Maze {
                     ((x * 2 + 1) * CELL_SIZE) as f32 / 2.,
                     ((y * 2 + 1) * CELL_SIZE) as f32 / 2.,
                 );
+
                 let cell = self.get(x, y);
 
                 if cell == 0 {
@@ -293,6 +257,57 @@ impl Drawable for Maze {
             }
         }
     }
+}
+
+fn encode_maze(maze: &Maze) -> Result<String, String> {
+    let mut data = vec![];
+
+    if maze.width > u16::MAX as usize {
+        return Err(String::from("maze width too large"))
+    }
+
+    let width: u16 = maze.width.try_into().unwrap();
+    data.extend(width.to_be_bytes());
+
+    let default = 0;
+
+    for i in 0..((maze.cells.len() + 1) / 2) {
+        let cell1 = *maze.cells.get(i * 2).unwrap_or(&default);
+        let cell2 = *maze.cells.get(i * 2 + 1).unwrap_or(&default);
+
+        data.push(cell1 << 4 | cell2);
+    }
+
+    Ok(unsafe { String::from_utf8_unchecked(data) })
+}
+
+fn decode_maze(data: &Vec<u8>) -> Result<Maze, String> {
+    let cell_data = &data[2..];
+
+    let width = (((data[0] as u16) << 8) + data[1] as u16) as usize;
+    let cell_count = if cell_data.last().unwrap() & 0x0f == 0 {
+        cell_data.len() * 2 - 1
+    } else {
+        cell_data.len() * 2
+    };
+    let height = cell_count / width;
+    
+    let mut cells: Vec<u8> = vec![];
+
+    for (i, cell_pair) in cell_data.iter().enumerate() {
+        cells.push((*cell_pair) >> 4);
+        if i * 2 + 1 < cell_count {
+            cells.push((*cell_pair) & 0x0f);
+        }
+    }
+
+    println!("{width}, {height}");
+    
+    return Ok(Maze {
+        width,
+        height,
+        cells,
+    })
 }
 
 pub trait MazeGenerator: Drawable {
