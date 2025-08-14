@@ -1,9 +1,8 @@
 use std::fs;
 
 use clap::{Parser, ValueEnum};
-use maze::maze::{generators::*, MazeSolver};
+use maze::maze::{generators::*, solvers::*, MazeSolver};
 use maze::consts::*;
-use maze::maze::solvers::{AStarSolver, Algorithm, BFSSolver, DFSSolver};
 use maze::maze::{Maze, MazeGenerator};
 use sfml::window::Key;
 use sfml::{
