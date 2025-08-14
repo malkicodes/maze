@@ -1,10 +1,11 @@
 use std::fs;
+use std::time::Instant;
 
 use clap::{Parser, ValueEnum};
 use maze::maze::{generators::*, solvers::*, MazeSolver};
 use maze::consts::*;
 use maze::maze::{Maze, MazeGenerator};
-use sfml::window::Key;
+use sfml::window::{Key, VideoMode};
 use sfml::{
     graphics::{Color, RenderTarget, RenderWindow},
     window::{Event, Style},
@@ -32,55 +33,54 @@ impl ToString for AlgorithmArg {
 }
 
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+#[command(version, about, long_about = None, disable_help_flag = true)]
 struct Cli {
-    /// Maze data path
+    /// Input maze data path
     #[arg(short, long)]
-    maze: Option<String>,
+    input: Option<String>,
+
+    /// Output maze data path
+    #[arg(short, long)]
+    output: Option<String>,
 
     /// See generation live
     #[arg(short, long)]
     debug: bool,
 
     /// Which algorithm to use
-    #[arg(long, default_value_t = AlgorithmArg::DFS)]
+    #[arg(short, long, default_value_t = AlgorithmArg::DFS)]
     alg: AlgorithmArg,
+
+    /// Maze width
+    #[arg(short, long, default_value_t = DEFAULT_MAZE_WIDTH)]
+    width: u16,
+
+    /// Maze height
+    #[arg(short, long, default_value_t = DEFAULT_MAZE_HEIGHT)]
+    height: u16,
+
+    /// Instantly solve the maze
+    #[arg(long, default_value_t = false)]
+    instant: bool,
+
+    /// Display help
+    #[clap(long, action = clap::ArgAction::HelpLong)]
+    help: Option<bool>,
 }
 
 fn main() {
     let cli: Cli = Cli::parse();
-
-    let mut window = RenderWindow::new(
-        (
-            (MAZE_WIDTH as usize * CELL_SIZE) as u32,
-            (MAZE_HEIGHT as usize * CELL_SIZE) as u32,
-        ),
-        "Maze",
-        Style::CLOSE,
-        &Default::default(),
-    )
-    .unwrap();
-
-    if cli.debug {
-        window.set_framerate_limit(DEBUG_STEPS_PER_SECOND);
-    } else {
-        window.set_vertical_sync_enabled(true)
-    }
     
     let mut generated = false;
-    let mut maze = match cli.maze {
+    let mut maze = match &cli.input {
         None => {
-            Maze::new(MAZE_WIDTH, MAZE_HEIGHT)
+            Maze::new(cli.width, cli.height)
         },
         Some(path) => {
             let data = fs::read(path).unwrap();
             
             generated = true;
             let maze = Maze::from_data(&data).unwrap();
-
-            let (width, height) = maze.get_bounds();
-
-            window.set_size(((width * CELL_SIZE) as u32, (height * CELL_SIZE) as u32));
 
             maze
         }
@@ -96,15 +96,63 @@ fn main() {
     };
 
     if !(generated || cli.debug) {
-        maze.generate(&mut generator);
+        let mut step_count: usize = 0;
+        
+        let start = Instant::now();
+        while !generator.step(&mut maze) {
+            step_count += 1;
+        }
+        let duration = start.elapsed();
+        
+        println!("Generating maze took {} steps and {:?}", step_count, duration);
+        
         generated = true
+    }
+
+    if let Some(path) = &cli.output {
+        match fs::write(path, maze.as_str().unwrap()) {
+            Ok(_) => println!("Wrote maze data to maze.dat"),
+            Err(err) => println!("Could not write to file: {}", err)
+        };
+    }
+
+    let mut window = RenderWindow::new(
+        {
+            let (maze_width, maze_height) = maze.get_bounds();
+
+            VideoMode::new((maze_width * CELL_SIZE) as u32, (maze_height * CELL_SIZE) as u32, 32)
+        },
+        "Maze",
+        Style::CLOSE,
+        &Default::default(),
+    )
+    .unwrap();
+
+    if cli.debug {
+        window.set_framerate_limit(DEBUG_STEPS_PER_SECOND);
+    } else {
+        window.set_vertical_sync_enabled(true)
+    }
+
+    if cli.instant {
+        let mut step_count: usize = 0;
+        
+        let start = Instant::now();
+        while let None = solver.step(&maze) {
+            step_count += 1;
+        }
+        let duration = start.elapsed();
+
+        println!("Solving maze took {step_count} steps and {duration:?}")
     }
 
     'mainloop: loop {
         while let Some(ev) = window.poll_event() {
             match ev {
                 Event::Closed => break 'mainloop,
-                Event::KeyPressed { code: Key::Q, .. } => break 'mainloop,
+                Event::KeyPressed { code, ctrl, .. } => if code == Key::Q || (code == Key::C && ctrl) {
+                    break 'mainloop;
+                },
                 _ => {}
             }
         }
@@ -127,9 +175,4 @@ fn main() {
 
         window.display();
     }
-
-    match fs::write("maze.dat", maze.as_str().unwrap()) {
-        Ok(_) => println!("Wrote maze data to maze.dat"),
-        Err(err) => println!("Could not write to file: {}", err)
-    };
 }

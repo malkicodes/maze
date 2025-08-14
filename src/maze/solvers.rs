@@ -12,12 +12,12 @@ pub enum Algorithm {
 }
 
 impl Algorithm {
-    pub fn step(&mut self, maze: &Maze) {
+    pub fn step(&mut self, maze: &Maze) -> Option<&Vec<(usize, usize)>> {
         match self {
             Self::BreadthFirstSearch(v) => v.step(maze),
             Self::DepthFirstSearch(v) => v.step(maze),
             Self::AStar(v) => v.step(maze),
-        };
+        }
     }
 }
 
@@ -295,7 +295,7 @@ impl Drawable for BFSSolver {
     fn draw<'a: 'shader, 'texture, 'shader, 'shader_texture>(
         &'a self,
         target: &mut dyn sfml::graphics::RenderTarget,
-        _: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
+        rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
     ) {
         let mut rect = RectangleShape::with_size(
             (CELL_SIZE as f32 / 2.,
@@ -321,6 +321,16 @@ impl Drawable for BFSSolver {
     
             target.draw(&rect);
         }
+
+        let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.path.len(), VertexBufferUsage::DYNAMIC).unwrap();
+
+        let points: Vec<Vertex> = self.path.iter().map(
+            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * CELL_SIZE / 2) as f32, ((*y * 2 + 1) * CELL_SIZE / 2) as f32).into(), Color::RED)
+        ).collect();
+
+        polyline.update(&points, 0).unwrap();
+
+        target.draw_vertex_buffer(&polyline, rs);
     }
 }
 

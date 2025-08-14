@@ -1,7 +1,6 @@
 pub mod generators;
 pub mod solvers;
 
-use std::time::Instant;
 use sfml::{
     graphics::{Drawable, RectangleShape, Shape, Transformable},
     system::Vector2f,
@@ -103,18 +102,6 @@ impl Maze {
         self.get(x, y);
 
         self.cells[y * self.width + x] = 0
-    }
-
-    pub fn generate(&mut self, generator: &mut dyn MazeGenerator) {
-        let mut step_count: usize = 0;
-        
-        let start = Instant::now();
-        while !generator.step(self) {
-            step_count += 1;
-        }
-        let duration = start.elapsed();
-
-        println!("Generating maze took {} steps and {:?}", step_count, duration);
     }
 
     pub fn get_neighbors(&self, (x, y): (usize, usize)) -> Vec<(usize, usize, Direction)>  {
