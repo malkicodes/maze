@@ -5,6 +5,8 @@ pub mod consts {
 
     use sfml::graphics::Color;
 
+    pub const DEFAULT_SPEED: u32 = 60;
+
     pub const DEFAULT_MAZE_WIDTH: u16 = 32;
     pub const DEFAULT_MAZE_HEIGHT: u16 = 32;
     pub const PREFERRED_SCREEN_SIZE: usize = 512;

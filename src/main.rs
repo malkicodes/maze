@@ -11,8 +11,6 @@ use sfml::{
     window::{Event, Style},
 };
 
-const DEBUG_STEPS_PER_SECOND: u32 = 144 * 2;
-
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 enum AlgorithmArg {
     /// Depth-First Search
@@ -47,9 +45,21 @@ struct Cli {
     #[arg(short, long)]
     debug: bool,
 
+    /// FPS / steps per second of the maze generation/solver
+    #[arg(long, default_value_t = DEFAULT_SPEED)]
+    speed: u32,
+
+    /// V-Sync
+    #[arg(long)]
+    vsync: bool,
+
     /// Which algorithm to use
     #[arg(short, long, default_value_t = AlgorithmArg::DFS)]
     alg: AlgorithmArg,
+
+    /// Instantly solve the maze
+    #[arg(long, default_value_t = false)]
+    instant: bool,
 
     /// Maze width
     #[arg(short, long, default_value_t = DEFAULT_MAZE_WIDTH)]
@@ -58,10 +68,6 @@ struct Cli {
     /// Maze height
     #[arg(short, long, default_value_t = DEFAULT_MAZE_HEIGHT)]
     height: u16,
-
-    /// Instantly solve the maze
-    #[arg(long, default_value_t = false)]
-    instant: bool,
 
     /// Display help
     #[clap(long, action = clap::ArgAction::HelpLong)]
@@ -72,6 +78,7 @@ fn main() {
     let cli: Cli = Cli::parse();
     
     let mut generated = false;
+
     let mut maze = match &cli.input {
         None => {
             Maze::new(cli.width, cli.height)
@@ -85,6 +92,7 @@ fn main() {
             maze
         }
     };
+
     update_cell_size(&maze.get_bounds());
 
     let mut generator = Wilson::new(maze.get_bounds());
@@ -97,7 +105,7 @@ fn main() {
         AlgorithmArg::AStar => Algorithm::AStar(AStarSolver::new(bounds))
     };
 
-    if !(generated || cli.debug) {
+    if (!generated) && (cli.instant || !cli.debug) {
         let mut step_count: usize = 0;
         
         let start = Instant::now();
@@ -133,10 +141,10 @@ fn main() {
     )
     .unwrap();
 
-    if cli.debug {
-        window.set_framerate_limit(DEBUG_STEPS_PER_SECOND);
+    if cli.vsync {
+        window.set_framerate_limit(cli.speed);
     } else {
-        window.set_vertical_sync_enabled(true)
+        window.set_vertical_sync_enabled(true);
     }
 
     if cli.instant {
