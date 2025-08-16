@@ -176,15 +176,17 @@ impl Drawable for Wilson {
         target.draw_vertex_buffer(&polyline, rs);
 
         if let Some(pos) = self.first_walk_target {
+            let radius = CELL_SIZE as f32 / 2.;
+
             let mut circle = CircleShape::new(
-                5., 
+                radius,
                 12
             );
-            circle.set_fill_color(Color::BLUE);
-            circle.set_origin((5., 5.));
+            circle.set_fill_color(Color::GREEN);
+            circle.set_origin((radius, radius));
             circle.set_position((
-                ((pos.0 * 2 + 1) * CELL_SIZE / 2) as f32,
-                ((pos.1 * 2 + 1) * CELL_SIZE / 2) as f32,
+                (pos.0 * 2 + 1) as f32 * radius,
+                (pos.1 * 2 + 1) as f32 * radius,
             ));
 
             target.draw(&circle);
