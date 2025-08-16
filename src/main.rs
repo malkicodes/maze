@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use clap::{Parser, ValueEnum};
 use maze::maze::{generators::*, solvers::*, MazeSolver};
-use maze::consts::*;
+use maze::{consts::*, Direction};
 use maze::maze::{Maze, MazeGenerator};
 use sfml::window::{ContextSettings, Key, VideoMode};
 use sfml::{
@@ -17,6 +17,7 @@ enum AlgorithmArg {
     DFS,
     /// Breadth-First Search
     BFS,
+    /// A*
     AStar,
 }
 
@@ -41,9 +42,17 @@ struct Cli {
     #[arg(short, long)]
     output: Option<String>,
 
+    /// Save solution to <OUTPUT>.solution.dat
+    #[arg(long)]
+    save_solution: bool,
+
     /// See generation live
     #[arg(short, long)]
     debug: bool,
+
+    /// Do not solve the maze, just generate/load a maze
+    #[arg(long)]
+    no_solve: bool,
 
     /// FPS / steps per second of the maze generation/solver
     #[arg(long, default_value_t = DEFAULT_SPEED)]
@@ -74,10 +83,21 @@ struct Cli {
     help: Option<bool>,
 }
 
+fn parse_output_filename(filename: &str) -> (String, String) {
+    let segments: Vec<_> = filename.split("/")
+        .last().unwrap_or("maze.dat")
+        .split(".").collect();
+
+    let name = segments[..segments.len()-1].join(".");
+
+    (format!("{name}.dat"), format!("{name}.solution.dat"))
+}
+
 fn main() {
     let cli: Cli = Cli::parse();
     
     let mut generated = false;
+    let mut solution: Option<Vec<(usize, usize)>> = None;
 
     let mut maze = match &cli.input {
         None => {
@@ -119,13 +139,6 @@ fn main() {
         generated = true
     }
 
-    if let Some(path) = &cli.output {
-        match fs::write(path, maze.as_str().unwrap()) {
-            Ok(_) => println!("Wrote maze data to {path}"),
-            Err(err) => println!("Could not write to file: {err}")
-        };
-    }
-
     let mut window = RenderWindow::new(
         {
             let bounds = maze.get_bounds();
@@ -151,9 +164,14 @@ fn main() {
         let mut step_count: usize = 0;
         
         let start = Instant::now();
-        while let None = solver.step(&maze) {
+        let mut result = None;
+        while let None = result {
+            result = solver.step(&maze);
             step_count += 1;
         }
+
+        solution = Some(result.unwrap().clone());
+
         let duration = start.elapsed();
 
         println!("Solving maze took {step_count} steps and {duration:?}")
@@ -172,8 +190,13 @@ fn main() {
 
         if !generated {
             generated = generator.step(&mut maze);
-        } else {
-            solver.step(&maze);
+        } else if let None = solution {
+            let result = solver.step(&maze);
+
+            match result {
+                Some(v) => solution = Some(v.clone()),
+                None => {},
+            }
         }
 
         window.clear(Color::BLACK);
@@ -187,5 +210,54 @@ fn main() {
         }
 
         window.display();
+    }
+
+    if let Some(path) = &cli.output {
+        let (output_file, output_solution_file) = parse_output_filename(path);
+
+        match fs::write(&output_file, maze.as_str().unwrap()) {
+            Ok(_) => println!("Wrote maze data to {}", &output_file),
+            Err(err) => println!("Could not save maze: {err}")
+        };
+
+        if cli.save_solution {
+            match &solution {
+                Some(solution) => {
+                    let directions: Vec<Direction> = (0..solution.len()-1).map(
+                        |i| {
+                            let j = i + 1;
+
+                            let from = solution[i];
+                            let to = solution[j];
+
+                            if to.0 > from.0 {
+                                Direction::RIGHT
+                            } else if to.0 < from.0 {
+                                Direction::LEFT
+                            } else if to.1 > from.1 {
+                                Direction::DOWN
+                            } else {
+                                Direction::UP
+                            }
+                        }
+                    ).collect();
+
+                    let data: Vec<u8> = directions.iter().map(
+                        |dir| match dir {
+                            Direction::UP => 'U',
+                            Direction::RIGHT => 'R',
+                            Direction::DOWN => 'D',
+                            Direction::LEFT => 'L',
+                        } as u8
+                    ).collect();
+
+                    match fs::write(&output_solution_file, data) {
+                        Ok(_) => println!("Wrote maze data to {}", &output_solution_file),
+                        Err(err) => println!("Could not save solution: {err}")
+                    };
+                },
+                None => println!("Could not save solution: did not finish solving")
+            }
+        }
     }
 }
