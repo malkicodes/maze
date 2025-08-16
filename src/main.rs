@@ -111,8 +111,8 @@ fn main() {
 
     if let Some(path) = &cli.output {
         match fs::write(path, maze.as_str().unwrap()) {
-            Ok(_) => println!("Wrote maze data to maze.dat"),
-            Err(err) => println!("Could not write to file: {}", err)
+            Ok(_) => println!("Wrote maze data to {path}"),
+            Err(err) => println!("Could not write to file: {err}")
         };
     }
 
