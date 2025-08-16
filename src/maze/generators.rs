@@ -28,10 +28,12 @@ impl Drawable for RandomDFS {
         target: &mut dyn sfml::graphics::RenderTarget,
         rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
     ) {
+        let cell_size = get_cell_size();
+
         let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.stack.len(), VertexBufferUsage::DYNAMIC).unwrap();
 
         let points: Vec<Vertex> = self.stack.iter().map(
-            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * CELL_SIZE / 2) as f32, ((*y * 2 + 1) * CELL_SIZE / 2) as f32).into(), Color::RED)
+            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * cell_size / 2) as f32, ((*y * 2 + 1) * cell_size / 2) as f32).into(), Color::RED)
         ).collect();
 
         polyline.update(&points, 0).unwrap();
@@ -165,10 +167,12 @@ impl Drawable for Wilson {
         target: &mut dyn sfml::graphics::RenderTarget,
         rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
     ) {
+        let cell_size = get_cell_size();
+
         let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.walk.len(), VertexBufferUsage::DYNAMIC).unwrap();
 
         let points: Vec<Vertex> = self.walk.iter().map(
-            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * CELL_SIZE / 2) as f32, ((*y * 2 + 1) * CELL_SIZE / 2) as f32).into(), Color::RED)
+            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * cell_size / 2) as f32, ((*y * 2 + 1) * cell_size / 2) as f32).into(), Color::RED)
         ).collect();
 
         polyline.update(&points, 0).unwrap();
@@ -176,7 +180,7 @@ impl Drawable for Wilson {
         target.draw_vertex_buffer(&polyline, rs);
 
         if let Some(pos) = self.first_walk_target {
-            let radius = CELL_SIZE as f32 / 2.;
+            let radius = cell_size as f32 / 2.;
 
             let mut circle = CircleShape::new(
                 radius,

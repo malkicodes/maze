@@ -7,7 +7,7 @@ use sfml::{
 };
 use crate::Direction;
 
-use crate::consts::{CELL_COLOR, CELL_SIZE, EMPTY_CELL_COLOR, WALL_COLOR, WALL_WIDTH};
+use crate::consts::{CELL_COLOR, get_cell_size, EMPTY_CELL_COLOR, WALL_COLOR, WALL_WIDTH};
 
 #[derive(Debug)]
 pub struct Maze {
@@ -163,37 +163,38 @@ impl Drawable for Maze {
         rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
     ) {
         target.clear(WALL_COLOR);
+        let cell_size = get_cell_size();
 
         let mut empty_rect = RectangleShape::with_size(
             (
-                (CELL_SIZE - WALL_WIDTH * 2) as f32,
-                (CELL_SIZE - WALL_WIDTH * 2) as f32,
+                (cell_size - WALL_WIDTH * 2) as f32,
+                (cell_size - WALL_WIDTH * 2) as f32,
             )
                 .into(),
         );
         empty_rect.set_origin((
-            CELL_SIZE as f32 / 2. - WALL_WIDTH as f32,
-            CELL_SIZE as f32 / 2. - WALL_WIDTH as f32,
+            cell_size as f32 / 2. - WALL_WIDTH as f32,
+            cell_size as f32 / 2. - WALL_WIDTH as f32,
         ));
         empty_rect.set_fill_color(EMPTY_CELL_COLOR);
 
         let mut up_rect = RectangleShape::with_size(
             (
-                (CELL_SIZE - WALL_WIDTH * 2) as f32,
-                (CELL_SIZE - WALL_WIDTH) as f32,
+                (cell_size - WALL_WIDTH * 2) as f32,
+                (cell_size - WALL_WIDTH) as f32,
             )
                 .into(),
         );
         up_rect.set_origin((
-            CELL_SIZE as f32 / 2. - WALL_WIDTH as f32,
-            CELL_SIZE as f32 / 2.,
+            cell_size as f32 / 2. - WALL_WIDTH as f32,
+            cell_size as f32 / 2.,
         ));
         up_rect.set_fill_color(CELL_COLOR);
 
         let mut down_rect = up_rect.clone();
         down_rect.set_origin((
-            CELL_SIZE as f32 / 2. - WALL_WIDTH as f32,
-            CELL_SIZE as f32 / 2. - WALL_WIDTH as f32,
+            cell_size as f32 / 2. - WALL_WIDTH as f32,
+            cell_size as f32 / 2. - WALL_WIDTH as f32,
         ));
         down_rect.set_fill_color(CELL_COLOR);
 
@@ -201,23 +202,23 @@ impl Drawable for Maze {
             up_rect.size().perpendicular()
         );
         left_rect.set_origin((
-            CELL_SIZE as f32 / -2. + WALL_WIDTH as f32,
-            CELL_SIZE as f32 / 2. - WALL_WIDTH as f32,
+            cell_size as f32 / -2. + WALL_WIDTH as f32,
+            cell_size as f32 / 2. - WALL_WIDTH as f32,
         ));
         left_rect.set_fill_color(CELL_COLOR);
 
         let mut right_rect = left_rect.clone();
         right_rect.set_origin((
-            CELL_SIZE as f32 / -2.,
-            CELL_SIZE as f32 / 2. - WALL_WIDTH as f32,
+            cell_size as f32 / -2.,
+            cell_size as f32 / 2. - WALL_WIDTH as f32,
         ));
         right_rect.set_fill_color(CELL_COLOR);
 
         for y in 0..self.height {
             for x in 0..self.width {
                 let position = Vector2f::new(
-                    ((x * 2 + 1) * CELL_SIZE) as f32 / 2.,
-                    ((y * 2 + 1) * CELL_SIZE) as f32 / 2.,
+                    ((x * 2 + 1) * cell_size) as f32 / 2.,
+                    ((y * 2 + 1) * cell_size) as f32 / 2.,
                 );
 
                 let cell = self.get(x, y);

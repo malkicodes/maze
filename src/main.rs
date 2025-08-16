@@ -5,7 +5,7 @@ use clap::{Parser, ValueEnum};
 use maze::maze::{generators::*, solvers::*, MazeSolver};
 use maze::consts::*;
 use maze::maze::{Maze, MazeGenerator};
-use sfml::window::{Key, VideoMode};
+use sfml::window::{ContextSettings, Key, VideoMode};
 use sfml::{
     graphics::{Color, RenderTarget, RenderWindow},
     window::{Event, Style},
@@ -85,6 +85,8 @@ fn main() {
             maze
         }
     };
+    update_cell_size(&maze.get_bounds());
+
     let mut generator = Wilson::new(maze.get_bounds());
 
     let bounds = maze.get_bounds();
@@ -118,13 +120,16 @@ fn main() {
 
     let mut window = RenderWindow::new(
         {
-            let (maze_width, maze_height) = maze.get_bounds();
+            let bounds = maze.get_bounds();
 
-            VideoMode::new((maze_width * CELL_SIZE) as u32, (maze_height * CELL_SIZE) as u32, 32)
+            VideoMode::new(
+                (bounds.0 * get_cell_size()) as u32, 
+                (bounds.1 * get_cell_size()) as u32, 32
+            )
         },
         "Maze",
         Style::CLOSE,
-        &Default::default(),
+        &ContextSettings::default(),
     )
     .unwrap();
 

@@ -1,16 +1,31 @@
 pub mod maze;
 
 pub mod consts {
+    use std::sync::{LazyLock, RwLock};
+
     use sfml::graphics::Color;
 
     pub const DEFAULT_MAZE_WIDTH: u16 = 32;
     pub const DEFAULT_MAZE_HEIGHT: u16 = 32;
-    pub const CELL_SIZE: usize = 4;
+    pub const PREFERRED_SCREEN_SIZE: usize = 512;
     pub const WALL_WIDTH: usize = 1;
-
+    
     pub const WALL_COLOR: Color = Color::rgb(0, 0, 0);
     pub const CELL_COLOR: Color = Color::rgb(255, 255, 255);
     pub const EMPTY_CELL_COLOR: Color = Color::rgb(64, 64, 64);
+    
+    pub static CELL_SIZE: LazyLock<RwLock<usize>> = LazyLock::new(|| RwLock::new(16));
+
+    pub fn get_cell_size() -> usize {
+        *CELL_SIZE.read().unwrap()
+    }
+
+    pub fn update_cell_size(bounds: &(usize, usize)) {
+        let average_size = (bounds.0 + bounds.1) / 2;
+
+        let mut w = CELL_SIZE.write().unwrap();
+        *w = (PREFERRED_SCREEN_SIZE / average_size).max(5);
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

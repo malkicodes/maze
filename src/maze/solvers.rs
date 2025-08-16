@@ -272,10 +272,12 @@ impl Drawable for DFSSolver {
         target: &mut dyn sfml::graphics::RenderTarget,
         rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
     ) {
+        let cell_size = get_cell_size();
+
         let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.path.len(), VertexBufferUsage::DYNAMIC).unwrap();
 
         let points: Vec<Vertex> = self.path.iter().map(
-            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * CELL_SIZE / 2) as f32, ((*y * 2 + 1) * CELL_SIZE / 2) as f32).into(), Color::RED)
+            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * cell_size / 2) as f32, ((*y * 2 + 1) * cell_size / 2) as f32).into(), Color::RED)
         ).collect();
 
         polyline.update(&points, 0).unwrap();
@@ -290,11 +292,14 @@ impl Drawable for BFSSolver {
         target: &mut dyn sfml::graphics::RenderTarget,
         rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
     ) {
+
+        let cell_size = get_cell_size();
+
         let mut rect = RectangleShape::with_size(
-            (CELL_SIZE as f32 / 2.,
-            CELL_SIZE as f32 / 2.).into()
+            (cell_size as f32 / 2.,
+            cell_size as f32 / 2.).into()
         );
-        rect.set_origin((CELL_SIZE as f32 / 4., CELL_SIZE as f32 / 4.));
+        rect.set_origin((cell_size as f32 / 4., cell_size as f32 / 4.));
 
         for pos in self.visited.keys() {
             rect.set_fill_color(Color::rgba(0, 255, 0, if self.finished {
@@ -308,8 +313,8 @@ impl Drawable for BFSSolver {
             }));
 
             rect.set_position((
-                ((pos.0 * 2 + 1) * CELL_SIZE / 2) as f32,
-                ((pos.1 * 2 + 1) * CELL_SIZE / 2) as f32,
+                ((pos.0 * 2 + 1) * cell_size / 2) as f32,
+                ((pos.1 * 2 + 1) * cell_size / 2) as f32,
             ));
     
             target.draw(&rect);
@@ -318,7 +323,7 @@ impl Drawable for BFSSolver {
         let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.path.len(), VertexBufferUsage::DYNAMIC).unwrap();
 
         let points: Vec<Vertex> = self.path.iter().map(
-            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * CELL_SIZE / 2) as f32, ((*y * 2 + 1) * CELL_SIZE / 2) as f32).into(), Color::RED)
+            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * cell_size / 2) as f32, ((*y * 2 + 1) * cell_size / 2) as f32).into(), Color::RED)
         ).collect();
 
         polyline.update(&points, 0).unwrap();
@@ -333,13 +338,15 @@ impl Drawable for AStarSolver {
         target: &mut dyn sfml::graphics::RenderTarget,
         rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
     ) {
+        let cell_size = get_cell_size();
+        
         let finished = self.path.len() != 0;
 
         let mut rect = RectangleShape::with_size(
-            (CELL_SIZE as f32 / 2.,
-            CELL_SIZE as f32 / 2.).into()
+            (cell_size as f32 / 2.,
+            cell_size as f32 / 2.).into()
         );
-        rect.set_origin((CELL_SIZE as f32 / 4., CELL_SIZE as f32 / 4.));
+        rect.set_origin((cell_size as f32 / 4., cell_size as f32 / 4.));
         
         for pos in self.closed.keys() {
             rect.set_fill_color(Color::rgba(255, 0, 0, if finished {
@@ -353,8 +360,8 @@ impl Drawable for AStarSolver {
                 })
             );
             rect.set_position((
-                ((pos.0 * 2 + 1) * CELL_SIZE / 2) as f32,
-                ((pos.1 * 2 + 1) * CELL_SIZE / 2) as f32,
+                ((pos.0 * 2 + 1) * cell_size / 2) as f32,
+                ((pos.1 * 2 + 1) * cell_size / 2) as f32,
             ));
 
             target.draw(&rect);
@@ -364,8 +371,8 @@ impl Drawable for AStarSolver {
         
         for pos in self.open.keys() {
             rect.set_position((
-                ((pos.0 * 2 + 1) * CELL_SIZE / 2) as f32,
-                ((pos.1 * 2 + 1) * CELL_SIZE / 2) as f32,
+                ((pos.0 * 2 + 1) * cell_size / 2) as f32,
+                ((pos.1 * 2 + 1) * cell_size / 2) as f32,
             ));
 
             target.draw(&rect);
@@ -375,7 +382,7 @@ impl Drawable for AStarSolver {
             let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.path.len(), VertexBufferUsage::DYNAMIC).unwrap();
     
             let points: Vec<Vertex> = self.path.iter().map(
-                |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * CELL_SIZE / 2) as f32, ((*y * 2 + 1) * CELL_SIZE / 2) as f32).into(), Color::RED)
+                |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * cell_size / 2) as f32, ((*y * 2 + 1) * cell_size / 2) as f32).into(), Color::RED)
             ).collect();
     
             polyline.update(&points, 0).unwrap();
