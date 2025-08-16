@@ -160,7 +160,7 @@ fn main() {
         window.set_vertical_sync_enabled(true);
     }
 
-    if cli.instant {
+    if cli.instant && !cli.no_solve {
         let mut step_count: usize = 0;
         
         let start = Instant::now();
@@ -190,12 +190,14 @@ fn main() {
 
         if !generated {
             generated = generator.step(&mut maze);
-        } else if let None = solution {
-            let result = solver.step(&maze);
+        } else if !cli.no_solve {
+            if let None = solution {
+                let result = solver.step(&maze);
 
-            match result {
-                Some(v) => solution = Some(v.clone()),
-                None => {},
+                match result {
+                    Some(v) => solution = Some(v.clone()),
+                    None => {},
+                }
             }
         }
 
@@ -205,7 +207,7 @@ fn main() {
 
         if !generated {
             window.draw(&generator);
-        } else {
+        } else if !cli.no_solve {
             window.draw(&solver);
         }
 
