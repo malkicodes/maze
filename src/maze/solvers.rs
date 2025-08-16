@@ -199,7 +199,7 @@ impl MazeSolver for AStarSolver {
             if info.f_cost < current_data.1.f_cost || 
                 (
                     info.f_cost == current_data.1.f_cost 
-                    && info.h_cost < current_data.1.h_cost
+                    && info.h_cost <= current_data.1.h_cost
                 ) {
                 current_data.0 = pos;
                 current_data.1 = info;
@@ -339,7 +339,7 @@ impl Drawable for AStarSolver {
         rs: &sfml::graphics::RenderStates<'texture, 'shader, 'shader_texture>,
     ) {
         let cell_size = get_cell_size();
-        
+
         let finished = self.path.len() != 0;
 
         let mut rect = RectangleShape::with_size(
