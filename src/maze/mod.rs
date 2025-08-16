@@ -126,27 +126,33 @@ impl Maze {
         neighbors
     }
 
-    pub fn get_travellable_neighbors(&self, (x, y): (usize, usize)) -> Vec<(usize, usize, Direction)> {
-        let mut neighbors: Vec<(usize, usize, Direction)> = vec![];
+    pub fn get_travellable_neighbors(&self, (x, y): (usize, usize)) -> ([(usize, usize); 4], usize) {
         let value = self.get(x, y);
+        
+        let mut neighbors: [_; 4] = [(0, 0); 4];
+        let mut neighbor_count = 0;
 
         if x > 0 && value & Direction::LEFT as u8 != 0 {
-            neighbors.push((x - 1, y, Direction::LEFT));
+            neighbors[neighbor_count] = (x - 1, y);
+            neighbor_count += 1;
         }
 
         if x + 1 < self.width && value & Direction::RIGHT as u8 != 0 {
-            neighbors.push((x + 1, y, Direction::RIGHT));
+            neighbors[neighbor_count] = (x + 1, y);
+            neighbor_count += 1;
         }
 
         if y > 0 && value & Direction::UP as u8 != 0 {
-            neighbors.push((x, y - 1, Direction::UP));
+            neighbors[neighbor_count] = (x, y - 1);
+            neighbor_count += 1;
         }
 
         if y + 1 < self.height && value & Direction::DOWN as u8 != 0  {
-            neighbors.push((x, y + 1, Direction::DOWN));
+            neighbors[neighbor_count] = (x, y + 1);
+            neighbor_count += 1;
         }
 
-        neighbors
+        (neighbors, neighbor_count)
     }
 }
 

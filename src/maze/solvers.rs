@@ -1,4 +1,5 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::usize;
 
 use sfml::graphics::{Color, Drawable, PrimitiveType, RectangleShape, Shape, Transformable, Vertex, VertexBuffer, VertexBufferUsage};
 
@@ -60,11 +61,11 @@ impl MazeSolver for DFSSolver {
         }
 
         let neighbors = maze.get_travellable_neighbors(pos);
-        let next = neighbors.iter().filter_map(
-            |v| if self.visited.contains(&(v.0, v.1)) {
+        let next = (0..neighbors.1).filter_map(
+            |i| if self.visited.contains(&neighbors.0[i]) {
                 None
             } else {
-                Some((v.0, v.1))
+                Some(neighbors.0[i])
             }
         ).nth(0);
 
@@ -138,11 +139,11 @@ impl MazeSolver for BFSSolver {
         }
 
         let neighbors = maze.get_travellable_neighbors(pos);
-        let next: Vec<_> = neighbors.iter().filter_map(
-            |v| if self.visited.contains_key(&(v.0, v.1)) {
+        let next: Vec<_> = (0..neighbors.1).filter_map(
+            |i| if self.visited.contains_key(&neighbors.0[i]) {
                 None
             } else {
-                Some((v.0, v.1))
+                Some(neighbors.0[i])
             }
         ).collect();
 
@@ -163,7 +164,7 @@ struct CellInformation {
 }
 
 pub struct AStarSolver {
-    open: HashMap<(usize, usize), CellInformation>,
+    open: BTreeMap<(usize, usize), CellInformation>,
     closed: HashMap<(usize, usize), CellInformation>,
 
     end: (usize, usize),
@@ -173,7 +174,7 @@ pub struct AStarSolver {
 
 impl MazeSolver for AStarSolver {
     fn new(bounds: (usize, usize)) -> Self {
-        let mut open = HashMap::new();
+        let mut open = BTreeMap::new();
 
         open.insert((0, 0), CellInformation { h_cost: 0, f_cost: bounds.0 + bounds.1, from: None });
 
@@ -192,26 +193,18 @@ impl MazeSolver for AStarSolver {
             return Some(&self.path);
         }
 
-        let mut min_f_cost = usize::MAX;
-        let mut min_f_cost_cells: Vec<(&(usize, usize), &CellInformation)> = vec![];
+        let mut current_data: (&(usize, usize), &CellInformation) = (&(1, 1), &CellInformation{from: None, f_cost: usize::MAX, h_cost: usize::MAX});
 
         for (pos, info) in self.open.iter() {
-            if info.f_cost < min_f_cost {
-                min_f_cost_cells.clear();
-                min_f_cost_cells.push((pos, info));
-                min_f_cost = info.f_cost
-            } else if info.f_cost == min_f_cost {
-                min_f_cost_cells.push((pos, info));
+            if info.f_cost < current_data.1.f_cost || 
+                (
+                    info.f_cost == current_data.1.f_cost 
+                    && info.h_cost < current_data.1.h_cost
+                ) {
+                current_data.0 = pos;
+                current_data.1 = info;
             }
         }
-
-        let current_data = {
-            if min_f_cost_cells.len() == 1 {
-                min_f_cost_cells[0]
-            } else {
-                *min_f_cost_cells.iter().min_by_key(|(_, v)| v.h_cost).unwrap()
-            }
-        };
 
         let current_pos= *current_data.0;
         let current = *current_data.1;
@@ -240,7 +233,7 @@ impl MazeSolver for AStarSolver {
 
         let neighbors = maze.get_travellable_neighbors(current_pos);
 
-        for neighbor in neighbors.iter().map(|v| (v.0, v.1)) {
+        for neighbor in (0..neighbors.1).map(|i| neighbors.0[i]) {
             if self.closed.contains_key(&neighbor) {
                 continue;
             }
@@ -267,7 +260,7 @@ impl MazeSolver for AStarSolver {
                 self.open.insert(neighbor, CellInformation { f_cost, h_cost: h_cost, from: Some(current_pos) });
             }
         }
-
+        
         None
     }
 }
