@@ -294,8 +294,6 @@ fn decode_maze(data: &Vec<u8>) -> Result<Maze, String> {
             cells.push((*cell_pair) & 0x0f);
         }
     }
-
-    println!("{width}, {height}");
     
     return Ok(Maze {
         width,
