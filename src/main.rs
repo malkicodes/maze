@@ -1,16 +1,18 @@
+use std::fmt::Display;
 use std::fs;
 use std::time::Instant;
 
 use clap::{Parser, ValueEnum};
 use maze::maze::{generators::*, solvers::*, MazeSolver};
-use maze::{consts::*, Direction};
 use maze::maze::{Maze, MazeGenerator};
+use maze::{consts::*, Direction};
 use sfml::window::{ContextSettings, Key, VideoMode};
 use sfml::{
     graphics::{Color, RenderTarget, RenderWindow},
     window::{Event, Style},
 };
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 enum AlgorithmArg {
     /// Depth-First Search
@@ -21,13 +23,17 @@ enum AlgorithmArg {
     AStar,
 }
 
-impl ToString for AlgorithmArg {
-    fn to_string(&self) -> String {
-        match self {
-            AlgorithmArg::BFS => String::from("bfs"),
-            AlgorithmArg::DFS => String::from("dfs"),
-            AlgorithmArg::AStar => String::from("a-star"),
-        }
+impl Display for AlgorithmArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                AlgorithmArg::BFS => "bfs",
+                AlgorithmArg::DFS => "dfs",
+                AlgorithmArg::AStar => "a-star",
+            }
+        )
     }
 }
 
@@ -84,32 +90,32 @@ struct Cli {
 }
 
 fn parse_output_filename(filename: &str) -> (String, String) {
-    let segments: Vec<_> = filename.split("/")
-        .last().unwrap_or("maze.dat")
-        .split(".").collect();
+    let segments: Vec<_> = filename
+        .split("/")
+        .last()
+        .unwrap_or("maze.dat")
+        .split(".")
+        .collect();
 
-    let name = segments[..segments.len()-1].join(".");
+    let name = segments[..segments.len() - 1].join(".");
 
     (format!("{name}.dat"), format!("{name}.solution.dat"))
 }
 
 fn main() {
     let cli: Cli = Cli::parse();
-    
+
     let mut generated = false;
     let mut solution: Option<Vec<(usize, usize)>> = None;
 
     let mut maze = match &cli.input {
-        None => {
-            Maze::new(cli.width, cli.height)
-        },
+        None => Maze::new(cli.width, cli.height),
         Some(path) => {
             let data = fs::read(path).unwrap();
-            
-            generated = true;
-            let maze = Maze::from_data(&data).unwrap();
 
-            maze
+            generated = true;
+
+            Maze::from_data(&data).unwrap()
         }
     };
 
@@ -122,20 +128,23 @@ fn main() {
     let mut solver: Algorithm = match cli.alg {
         AlgorithmArg::BFS => Algorithm::BreadthFirstSearch(BFSSolver::new(bounds)),
         AlgorithmArg::DFS => Algorithm::DepthFirstSearch(DFSSolver::new(bounds)),
-        AlgorithmArg::AStar => Algorithm::AStar(AStarSolver::new(bounds))
+        AlgorithmArg::AStar => Algorithm::AStar(AStarSolver::new(bounds)),
     };
 
     if (!generated) && (cli.instant || !cli.debug) {
         let mut step_count: usize = 0;
-        
+
         let start = Instant::now();
         while !generator.step(&mut maze) {
             step_count += 1;
         }
         let duration = start.elapsed();
-        
-        println!("Generating maze took {} steps and {:?}", step_count, duration);
-        
+
+        println!(
+            "Generating maze took {} steps and {:?}",
+            step_count, duration
+        );
+
         generated = true
     }
 
@@ -144,8 +153,9 @@ fn main() {
             let bounds = maze.get_bounds();
 
             VideoMode::new(
-                (bounds.0 * get_cell_size()) as u32, 
-                (bounds.1 * get_cell_size()) as u32, 32
+                (bounds.0 * get_cell_size()) as u32,
+                (bounds.1 * get_cell_size()) as u32,
+                32,
             )
         },
         "Maze",
@@ -162,10 +172,10 @@ fn main() {
 
     if cli.instant && !cli.no_solve {
         let mut step_count: usize = 0;
-        
+
         let start = Instant::now();
         let mut result = None;
-        while let None = result {
+        while result.is_none() {
             result = solver.step(&maze);
             step_count += 1;
         }
@@ -181,23 +191,22 @@ fn main() {
         while let Some(ev) = window.poll_event() {
             match ev {
                 Event::Closed => break 'mainloop,
-                Event::KeyPressed { code, ctrl, .. } => if code == Key::Q || (code == Key::C && ctrl) {
-                    break 'mainloop;
-                },
+                Event::KeyPressed { code, ctrl, .. } => {
+                    if code == Key::Q || (code == Key::C && ctrl) {
+                        break 'mainloop;
+                    }
+                }
                 _ => {}
             }
         }
 
         if !generated {
             generated = generator.step(&mut maze);
-        } else if !cli.no_solve {
-            if let None = solution {
-                let result = solver.step(&maze);
+        } else if !cli.no_solve && solution.is_none() {
+            let result = solver.step(&maze);
 
-                match result {
-                    Some(v) => solution = Some(v.clone()),
-                    None => {},
-                }
+            if let Some(v) = result {
+                solution = Some(v.clone())
             }
         }
 
@@ -219,14 +228,14 @@ fn main() {
 
         match fs::write(&output_file, maze.as_str().unwrap()) {
             Ok(_) => println!("Wrote maze data to {}", &output_file),
-            Err(err) => println!("Could not save maze: {err}")
+            Err(err) => println!("Could not save maze: {err}"),
         };
 
         if cli.save_solution {
             match &solution {
                 Some(solution) => {
-                    let directions: Vec<Direction> = (0..solution.len()-1).map(
-                        |i| {
+                    let directions: Vec<Direction> = (0..solution.len() - 1)
+                        .map(|i| {
                             let j = i + 1;
 
                             let from = solution[i];
@@ -241,24 +250,25 @@ fn main() {
                             } else {
                                 Direction::UP
                             }
-                        }
-                    ).collect();
+                        })
+                        .collect();
 
-                    let data: Vec<u8> = directions.iter().map(
-                        |dir| match dir {
+                    let data: Vec<u8> = directions
+                        .iter()
+                        .map(|dir| match dir {
                             Direction::UP => 'U',
                             Direction::RIGHT => 'R',
                             Direction::DOWN => 'D',
                             Direction::LEFT => 'L',
-                        } as u8
-                    ).collect();
+                        } as u8)
+                        .collect();
 
                     match fs::write(&output_solution_file, data) {
                         Ok(_) => println!("Wrote maze data to {}", &output_solution_file),
-                        Err(err) => println!("Could not save solution: {err}")
+                        Err(err) => println!("Could not save solution: {err}"),
                     };
-                },
-                None => println!("Could not save solution: did not finish solving")
+                }
+                None => println!("Could not save solution: did not finish solving"),
             }
         }
     }

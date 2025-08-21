@@ -1,7 +1,10 @@
 use std::vec;
 
 use rand::{rng, Rng};
-use sfml::graphics::{CircleShape, Color, Drawable, PrimitiveType, Shape, Transformable, Vertex, VertexBuffer, VertexBufferUsage};
+use sfml::graphics::{
+    CircleShape, Color, Drawable, PrimitiveType, Shape, Transformable, Vertex, VertexBuffer,
+    VertexBufferUsage,
+};
 
 use crate::consts::*;
 use crate::maze::{Maze, MazeGenerator};
@@ -13,11 +16,11 @@ pub struct RandomDFS {
 
 impl RandomDFS {
     pub fn new(bounds: (usize, usize)) -> Self {
-        Self{
+        Self {
             stack: vec![(
                 rng().random_range(0..bounds.0),
                 rng().random_range(0..bounds.1),
-            )]
+            )],
         }
     }
 }
@@ -30,11 +33,27 @@ impl Drawable for RandomDFS {
     ) {
         let cell_size = get_cell_size();
 
-        let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.stack.len(), VertexBufferUsage::DYNAMIC).unwrap();
+        let mut polyline = VertexBuffer::new(
+            PrimitiveType::LINE_STRIP,
+            self.stack.len(),
+            VertexBufferUsage::DYNAMIC,
+        )
+        .unwrap();
 
-        let points: Vec<Vertex> = self.stack.iter().map(
-            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * cell_size / 2) as f32, ((*y * 2 + 1) * cell_size / 2) as f32).into(), Color::RED)
-        ).collect();
+        let points: Vec<Vertex> = self
+            .stack
+            .iter()
+            .map(|(x, y)| {
+                Vertex::with_pos_color(
+                    (
+                        ((*x * 2 + 1) * cell_size / 2) as f32,
+                        ((*y * 2 + 1) * cell_size / 2) as f32,
+                    )
+                        .into(),
+                    Color::RED,
+                )
+            })
+            .collect();
 
         polyline.update(&points, 0).unwrap();
 
@@ -46,22 +65,22 @@ impl MazeGenerator for RandomDFS {
     fn step(&mut self, maze: &mut super::Maze) -> bool {
         let last_pos = self.stack.last();
 
-        match last_pos {
-            None => return true,
-            Some(_) => {}
+        if last_pos.is_none() {
+            return true;
         }
 
         let pos = *last_pos.unwrap();
 
         let neighbors = maze.get_neighbors(pos);
-        let possible_next: Vec<_> = neighbors.iter().filter(
-            |(x, y, _)| maze.get(*x, *y) == 0
-        ).collect();
+        let possible_next: Vec<_> = neighbors
+            .iter()
+            .filter(|(x, y, _)| maze.get(*x, *y) == 0)
+            .collect();
 
-        if possible_next.len() == 0 {
+        if possible_next.is_empty() {
             self.stack.pop();
 
-            self.stack.len() == 0
+            self.stack.is_empty()
         } else {
             let next = possible_next[rng().random_range(..possible_next.len())];
 
@@ -83,19 +102,25 @@ pub struct Wilson {
 
 impl Wilson {
     pub fn new(bounds: (usize, usize)) -> Self {
-        let start = (rng().random_range(..bounds.0), rng().random_range(..bounds.1));
+        let start = (
+            rng().random_range(..bounds.0),
+            rng().random_range(..bounds.1),
+        );
 
-        let end = loop{
-            let next = (rng().random_range(..bounds.0), rng().random_range(..bounds.1));
+        let end = loop {
+            let next = (
+                rng().random_range(..bounds.0),
+                rng().random_range(..bounds.1),
+            );
 
             if next.0 == start.0 && next.1 == start.1 {
                 continue;
             }
 
-            break next
+            break next;
         };
 
-        Self{
+        Self {
             walk: vec![start],
             first_walk_target: Some(end),
             opposite_of_last_direction: None,
@@ -108,7 +133,7 @@ impl Wilson {
     }
 
     fn finish_walk(&mut self, maze: &mut Maze) {
-        for i in 0..self.walk.len()-1 {
+        for i in 0..self.walk.len() - 1 {
             let start = self.walk[i];
             let end = self.walk[i + 1];
 
@@ -149,12 +174,13 @@ impl Wilson {
             }
         }
 
-        if possible_next.len() == 0 {
-            return true
+        if possible_next.is_empty() {
+            return true;
         }
 
         self.walk.clear();
-        self.walk.push(possible_next[rng().random_range(0..possible_next.len())]);
+        self.walk
+            .push(possible_next[rng().random_range(0..possible_next.len())]);
         self.opposite_of_last_direction = None;
 
         false
@@ -169,11 +195,27 @@ impl Drawable for Wilson {
     ) {
         let cell_size = get_cell_size();
 
-        let mut polyline = VertexBuffer::new(PrimitiveType::LINE_STRIP, self.walk.len(), VertexBufferUsage::DYNAMIC).unwrap();
+        let mut polyline = VertexBuffer::new(
+            PrimitiveType::LINE_STRIP,
+            self.walk.len(),
+            VertexBufferUsage::DYNAMIC,
+        )
+        .unwrap();
 
-        let points: Vec<Vertex> = self.walk.iter().map(
-            |(x, y)| Vertex::with_pos_color((((*x * 2 + 1) * cell_size / 2) as f32, ((*y * 2 + 1) * cell_size / 2) as f32).into(), Color::RED)
-        ).collect();
+        let points: Vec<Vertex> = self
+            .walk
+            .iter()
+            .map(|(x, y)| {
+                Vertex::with_pos_color(
+                    (
+                        ((*x * 2 + 1) * cell_size / 2) as f32,
+                        ((*y * 2 + 1) * cell_size / 2) as f32,
+                    )
+                        .into(),
+                    Color::RED,
+                )
+            })
+            .collect();
 
         polyline.update(&points, 0).unwrap();
 
@@ -182,10 +224,7 @@ impl Drawable for Wilson {
         if let Some(pos) = self.first_walk_target {
             let radius = cell_size as f32 / 2.;
 
-            let mut circle = CircleShape::new(
-                radius,
-                12
-            );
+            let mut circle = CircleShape::new(radius, 12);
             circle.set_fill_color(Color::GREEN);
             circle.set_origin((radius, radius));
             circle.set_position((
@@ -202,9 +241,8 @@ impl MazeGenerator for Wilson {
     fn step(&mut self, maze: &mut Maze) -> bool {
         let pos = self.walk.last();
 
-        match pos {
-            None => return true,
-            _ => {}
+        if pos.is_none() {
+            return true;
         }
 
         let pos = *pos.unwrap();
@@ -216,23 +254,23 @@ impl MazeGenerator for Wilson {
 
             if let Some(v) = self.opposite_of_last_direction {
                 if v == next.2 {
-                    continue
+                    continue;
                 }
             }
 
-            break next
+            break next;
         };
 
         if let Some(break_index) = self.pos_in_stack((next.0, next.1)) {
-            self.walk.drain(break_index+1..);
-            return false
+            self.walk.drain(break_index + 1..);
+            return false;
         }
 
         self.opposite_of_last_direction = Some(next.2.opposite());
         self.walk.push((next.0, next.1));
         self.current_walk_steps += 1;
 
-        if  maze.get(next.0, next.1) != 0 {
+        if maze.get(next.0, next.1) != 0 {
             self.first_walk_target = None;
             self.finish_walk(maze);
             return self.create_new_walk(maze);
